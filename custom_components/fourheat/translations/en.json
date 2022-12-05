@@ -1,20 +1,37 @@
 {
-  "config": {
-    "title": "4Heat",
-    "step": {
-      "user": {
-        "data": {
-          "name": "Name of the device",
-          "host": "The ip address of this 4Heat device",
-          "mode": "Legacy command mode"
+    "config": {
+        "abort": {
+            "host_exists": "Device is already configured"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "sensors": {
+                "data": {
+                    "mode": "Legacy command mode",
+                    "sensors": "Sensors to use:"
+                }
+            },
+            "user": {
+                "description": "4heat controller is a bit 'lazy'. Try a couple of times to connect if you get connection error. ",
+                "data": {
+                    "host": "Host",
+                    "port": "Port"
+                }
+            }
         }
-      }
     },
-    "error": {
-      "host_exists": "This host is already configured"
-    },
-    "abort": {
-      "host_exists": "This host is already configured"
+    "device_automation": {
+        "trigger_subtype": {
+            "button": "Button"
+        },
+        "trigger_type": {
+            "btn_down": "{subtype} button down",
+            "btn_up": "{subtype} button up",
+            "single": "{subtype} single clicked"
+        }
     }
-  }
 }

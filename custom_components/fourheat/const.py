@@ -1,95 +1,88 @@
-"""Constants for the 4Heat integration."""
-from datetime import timedelta
+"""Constants for the 4heat integration."""
+from logging import Logger, getLogger
+from typing import Final
 
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.button import ButtonDeviceClass
+from homeassistant.components.number import NumberMode
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
-    TEMP_CELSIUS,
-    PRESSURE_PA,
-    PRESSURE_MBAR,
+    REVOLUTIONS_PER_MINUTE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    UnitOfPressure,
+    UnitOfTemperature,
 )
+from homeassistant.helpers.entity import EntityCategory
 
-DOMAIN = "4heat"
+DOMAIN = "fourheat"
+LOGGER: Logger = getLogger(__package__)
 
-ATTR_STOVE_ID = "stove_id"
-ATTR_READING_ID = "reading_id"
-ATTR_MARKER = "marker"
-ATTR_NUM_VAL = "num_val"
-
-DATA_QUERY = b'["SEL","0"]'
-ERROR_QUERY = b'["SEC","3","I30001000000000000","I30002000000000000","I30017000000000000"]'
-UNBLOCK_CMD = b'["SEC","1","J30255000000000001"]' # Unblock
-OFF_CMD = b'["SEC","1","J30254000000000001"]' # OFF
-ON_CMD = b'["SEC","1","J30253000000000001"]' # ON
-
-OFF_CMD_OLD = b'["SEC","1","1"]' # OFF
-ON_CMD_OLD = b'["SEC","1","0"]' # ON
-
-MODES = [[ON_CMD, OFF_CMD, UNBLOCK_CMD], [ON_CMD_OLD, OFF_CMD_OLD, None]]
-CONF_MODE = 'mode'
-CMD_MODE_OPTIONS = ['Full set (default)', 'Limited set']
-
-RESULT_VALS = 'SEC'
-RESULT_ERROR = 'ERR'
+ENTRY_RELOAD_COOLDOWN = 20
+DATA_CONFIG_ENTRY: Final = "config_entry"
 
 TCP_PORT = 80
-
 SOCKET_BUFFER = 1024
 SOCKET_TIMEOUT = 10
+UPDATE_INTERVAL = 15  # Time in seconds between updates
+RETRY_UPDATE = 10
+RETRY_UPDATE_SLEEP = 5
+ON_COMMAND = SERVICE_TURN_ON
+OFF_COMMAND = SERVICE_TURN_OFF
+UNBLOCK_COMMAND = "unblock"
+SET_COMMAND = "set"
+GET_COMMAND = "get"
+INFO_COMMAND = "info"
+# TO DO move to schema not const
+# EXECUTE = {"info": "SEL", "command": "SEC", "config": {"network": "CF7"}}
+# EXECUTE_INFOS = {"all": "0"}
+# EXECUTE_COMMANDS = {"set": "1", "get": "3"}
+# EXECUTE_CONFIGS = {"network": {"erase": "0", "info": "4"}}
 
-DATA_COORDINATOR = "corrdinator"
+# fmt: off
+INFO_QUERY = ["SEL", "0"]  # Ask for a list of all sensors
+SET_QUERY = ["SEC", "1"]  # SET sensor value ["SEC","1","B{sensor}{str(value).zfill(12)}"]
+GET_QUERY = ["SEC", "3"]  # GET sensor value ["SEC","3","I{sensor}{str(value).zfill(12)}"]
+ON_ERROR_QUERY = [
+    "I30001000000000000",
+    "I30002000000000000",
+    "I30017000000000000"
+]   # Get basic info - State, Error, Water Temp
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=20)
+RESULT_INFO = "SEL"
+RESULT_OK = "SEC"
+RESULT_ERROR = "ERR"
+DEVICE_STATE_SENSOR = "30001"
+UNBLOCK_QUERY = ["SEC", "1", "J30255000000000001"]  # Full Unblock
+OFF_QUERY = ["SEC", "1", "J30254000000000001"]  # Full OFF
+ON_QUERY = ["SEC", "1", "J30253000000000001"]  # Full ON
 
-MODE_TYPE = "30001"
-ERROR_TYPE = "30002"
-POWER_TYPE = "20364"
+OFF_QUERY_LEGACY = ["SEC", "1", "1"]  # Legacy OFF
+ON_QUERY_LEGACY = ["SEC", "1", "0"]  # Legacy ON
+# fmt: on
 
-SENSOR_TYPES = {
-    "30001": ["State", None, ""],
-    "30002": ["Error", None, ""],
-    "30003": ["Timer", None, ""],
-    "30004": ["Ignition", None, ""],
-    "30005": ["Exhaust temperature", TEMP_CELSIUS, ""],
-    "30006": ["Room temperature", TEMP_CELSIUS, ""],
-    "30007": ["Inputs", None, ""],
-    "30008": ["Combustion fan", None, ""], #RPM
-    "30009": ["Heating fan", None, ""],
-    "30011": ["Combustion power", None, ""],
-    "30012": ["Puffer temperature", TEMP_CELSIUS, ""],
-    "30015": ["UN 30015", None, ""],
-    "30017": ["Boiler water", TEMP_CELSIUS, ""],
-    "30020": ["Water pressure", PRESSURE_MBAR, ""],
-    "30025": ["Comb.FanRealSpeed", None, ""],
-    "30026": ["UN 30026", TEMP_CELSIUS, ""],
-    "30033": ["Exhaust depression", PRESSURE_PA, ""],
-    "30040": ["UN 30040", None, ""],
-    "30044": ["UN 30044", None, ""],
-    "30084": ["UN 30084", None, ""],
-    "40007": ["UN 40007", None, ""],
-    "20180": ["Boiler target", TEMP_CELSIUS, ""],
-    "20199": ["Boiler target", TEMP_CELSIUS, ""],
-    "20205": ["UN 20205", None, ""],
-    "20206": ["UN 20206", None, ""],
-    "20211": ["UN 20211", None, ""],
-    "20225": ["UN 20225", None, ""],
-    "20364": ["Power Setting", None, ""],
-    "20381": ["UN 20381", None, ""],
-    "20365": ["UN 20365", None, ""],
-    "20366": ["UN 20366", None, ""],
-    "20369": ["UN 20369", None, ""],
-    "20374": ["UN 20374", None, ""],
-    "20375": ["UN 20375", None, ""],
-    "20575": ["UN 20575", None, ""],
-    "20493": ["Room temperature set point", TEMP_CELSIUS, ""],
-    "20570": ["UN 20570", None, ""],
-    "20801": ["Heating power", None, ""],
-    "20803": ["UN 20803", None, ""],
-    "20813": ["UN 20813", None, ""],
-    "21700": ["Room termostat", TEMP_CELSIUS, ""],
-    "40016": ["Outputs", None, ""],
-    "50001": ["Auger on", None, ""],
+CONF_MODE = {True: "legacy", False: "full"}
+CONF_MODES = {
+    "full": {
+        SERVICE_TURN_ON: ON_QUERY,
+        SERVICE_TURN_OFF: OFF_QUERY,
+        UNBLOCK_COMMAND: UNBLOCK_QUERY,
+        INFO_COMMAND: INFO_QUERY,
+        SET_COMMAND: SET_QUERY,
+        GET_COMMAND: GET_QUERY,
+    },
+    "legacy": {
+        SERVICE_TURN_ON: ON_QUERY_LEGACY,
+        SERVICE_TURN_OFF: OFF_QUERY_LEGACY,
+        INFO_COMMAND: INFO_QUERY,
+        SET_COMMAND: SET_QUERY,
+        GET_COMMAND: GET_QUERY,
+    },
 }
+# TO DO 20211 is potentionally MAX POWER or must be made configurable
+MAX_POWER = 5
 
-MODE_NAMES = {
+STATE_NAMES = {
     0: "OFF",
     1: "Check Up",
     2: "Ignition",
@@ -108,6 +101,7 @@ MODE_NAMES = {
     33: "Ignition",
     34: "Ignition",
 }
+STATES_OFF = [0, 7, 8, 9]
 
 ERROR_NAMES = {
     0: "No",
@@ -139,4 +133,468 @@ POWER_NAMES = {
     5: "P5",
     6: "P6",
     7: "Auto",
+}
+
+if MAX_POWER:
+    for x in range(1, MAX_POWER + 1):
+        POWER_NAMES[x] = "P" + str(x)
+    POWER_NAMES[MAX_POWER + 1] = "Auto"
+
+SENSORS: dict[str, list[dict]] = {
+    # Sensors list (str, dict(str,str|list))
+    # "id": str                 unique_id coming from device
+    #   [   optional list of dict if one id is going to utilize more platforms
+    #       {
+    #     Required:
+    #     "name" : str          Description of the sensor
+    #     "platform": str     Which platform will that sensor utilize, i.e ["sensor", "switch", "button"]
+    #
+    #     Optional: All attributes which the entity / platform has, i.e
+    #     "native_unit_of_measurement" : str        unit_of_measurement
+    #     "entity_category" :
+    #     "device_class" :
+    #     "state_class":
+    #     "extra_state_attribute":
+    #     "value": lambda : .....
+    #       }
+    #   ]
+    "30001": [
+        {
+            "name": "State",
+            "platform": "sensor",
+            "device_class": BinarySensorDeviceClass.RUNNING,
+            "value": lambda value: STATE_NAMES[value],
+            "extra_state_attributes": lambda device: {
+                "Device serial:": device.serial,
+                "Sensor type:": device.info("30001")["sensor_type"],
+                "Sensor ID:": "30001",
+                "Numerical value:": device.info("30001")["value"],
+            },
+        },
+        {
+            "name": "State",
+            "platform": "switch",
+            "entity_category": EntityCategory.CONFIG,
+            "device_class": BinarySensorDeviceClass.RUNNING,
+            "value": lambda value: value not in STATES_OFF,
+            "extra_state_attributes": lambda device: {
+                "Device serial:": device.serial,
+                "Sensor type:": device.info("30001")["sensor_type"],
+                "Sensor ID:": "30001",
+                "Numerical value:": device.info("30001")["value"],
+            },
+        },
+    ],
+    "30002": [
+        {
+            "id": "30002",
+            "name": "Error",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "device_class": BinarySensorDeviceClass.PROBLEM,
+            "value": lambda value: ERROR_NAMES[value],
+        },
+        {
+            "id": "30002",
+            "name": "Clear error",
+            "platform": "button",
+            "entity_category": EntityCategory.CONFIG,
+            "device_class": ButtonDeviceClass.UPDATE,
+            "press_action": lambda coordinator: coordinator.device.async_send_command(
+                "unblock"
+            ),
+            "supported": lambda coordinator: coordinator.device.mode is False,
+        },
+    ],
+    "30003": [
+        {
+            "id": "30003",
+            "name": "Timer",
+            "platform": "sensor",
+        }
+    ],
+    "30004": [
+        {
+            "id": "30004",
+            "name": "Ignition",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "30005": [
+        {
+            "id": "30005",
+            "name": "Exhaust temperature",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "value": lambda value: round(value, 1),
+            "platform": "sensor",
+        }
+    ],
+    "30006": [
+        {
+            "id": "30006",
+            "name": "Room temperature",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "30007": [
+        {
+            "id": "30007",
+            "name": "Inputs",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "30008": [
+        {
+            "id": "30008",
+            "name": "Combustion fan",
+            "native_unit_of_measurement": REVOLUTIONS_PER_MINUTE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "platform": "sensor",
+        }
+    ],
+    "30009": [
+        {
+            "id": "30009",
+            "name": "Heating fan",
+            "native_unit_of_measurement": REVOLUTIONS_PER_MINUTE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "platform": "sensor",
+        }
+    ],
+    "30010": [
+        {
+            "id": "30010",
+            "name": "UN 30010",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "30011": [
+        {
+            "id": "30011",
+            "name": "Combustion power",
+            "platform": "sensor",
+        }
+    ],
+    "30012": [
+        {
+            "id": "30012",
+            "name": "Puffer temperature",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "30015": [
+        {
+            "id": "30015",
+            "name": "Combustion fan",
+            "native_unit_of_measurement": "%",
+            "state_class": SensorStateClass.MEASUREMENT,
+            "platform": "sensor",
+        }
+    ],
+    "30017": [
+        {
+            "id": "30017",
+            "name": "Boiler water",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "30020": [
+        {
+            "id": "30020",
+            "name": "Water pressure",
+            "native_unit_of_measurement": UnitOfPressure.MBAR,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "30025": [
+        {
+            "id": "30025",
+            "name": "Comb.FanRealSpeed",
+            "native_unit_of_measurement": REVOLUTIONS_PER_MINUTE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "platform": "sensor",
+        }
+    ],
+    "30026": [
+        {
+            "id": "30026",
+            "name": "UN 30026",
+            "platform": "sensor",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "30033": [
+        {
+            "id": "30033",
+            "name": "Exhaust depression",
+            "native_unit_of_measurement": UnitOfPressure.PA,
+            "device_class": SensorDeviceClass.PRESSURE,
+            "platform": "sensor",
+        }
+    ],
+    "30040": [
+        {
+            "id": "30040",
+            "name": "UN 30040",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "30044": [
+        {
+            "id": "30044",
+            "name": "UN 30044",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "30084": [
+        {
+            "id": "30084",
+            "name": "UN 30084",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "40007": [
+        {
+            "id": "40007",
+            "name": "UN 40007",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20180": [
+        {
+            "id": "20180",
+            "name": "Boiler target",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "entity_category": EntityCategory.CONFIG,
+            "platform": "sensor",
+        },
+        {
+            "id": "20180",
+            "name": "Boiler target",
+            "platform": "number",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "entity_category": EntityCategory.CONFIG,
+            "native_min_value": 50,
+            "native_max_value": 80,
+            "native_step": 1,
+            "mode": NumberMode("slider"),
+        },
+    ],
+    "20199": [
+        {
+            "id": "20199",
+            "name": "Boiler target",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "entity_category": EntityCategory.CONFIG,
+            "platform": "sensor",
+        }
+    ],
+    "20005": [
+        {
+            "id": "20005",
+            "name": "Min boiler temperature",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "20006": [
+        {
+            "id": "20006",
+            "name": "Max boiler temperature",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+            "platform": "sensor",
+        }
+    ],
+    "20211": [
+        {
+            "id": "20211",
+            "name": "UN 20211",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20225": [
+        {
+            "id": "20225",
+            "name": "UN 20225",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20364": [
+        {
+            "id": "20364",
+            "name": "Power Setting",
+            "platform": "sensor",
+            "entity_category": EntityCategory.CONFIG,
+            "device_class": BinarySensorDeviceClass.RUNNING,
+            "value": lambda value: POWER_NAMES[value],
+            "extra_state_attributes": lambda device: {
+                "Device serial:": device.serial,
+                "Sensor type:": device.info("20364")["sensor_type"],
+                "Sensor ID:": "20364",
+                "Numerical value:": device.info("20364")["value"],
+            },
+        }
+    ],
+    "20381": [
+        {
+            "id": "20381",
+            "name": "UN 20381",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20365": [
+        {
+            "id": "20365",
+            "name": "UN 20365",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20366": [
+        {
+            "id": "20366",
+            "name": "UN 20366",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20369": [
+        {
+            "id": "20369",
+            "name": "UN 20369",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20374": [
+        {
+            "id": "20374",
+            "name": "UN 20374",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20375": [
+        {
+            "id": "20375",
+            "name": "UN 20375",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+            "platform": "sensor",
+        }
+    ],
+    "20575": [
+        {
+            "id": "20575",
+            "name": "UN 20575",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "20493": [
+        {
+            "id": "20493",
+            "name": "Room temperature set point",
+            "platform": "sensor",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+        }
+    ],
+    "20570": [
+        {
+            "id": "20570",
+            "name": "UN 20570",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "20801": [
+        {
+            "id": "20801",
+            "name": "Heating power",
+            "platform": "sensor",
+            "entity_category": EntityCategory.CONFIG,
+        }
+    ],
+    "20803": [
+        {
+            "id": "20803",
+            "name": "UN 20803",
+            "platform": "sensor",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+    ],
+    "20813": [
+        {
+            "id": "20813",
+            "name": "Power Setting",
+            "platform": "sensor",
+            "entity_category": EntityCategory.CONFIG,
+            "device_class": BinarySensorDeviceClass.RUNNING,
+            "value": lambda value: POWER_NAMES[value],
+            "extra_state_attributes": lambda device: {
+                "Device serial:": device.serial,
+                "Sensor type:": device.info("20813")["sensor_type"],
+                "Sensor ID:": "20364",
+                "Numerical value:": device.info("20813")["value"],
+            },
+        }
+    ],
+    "21700": [
+        {
+            "id": "21700",
+            "name": "Room thermostat",
+            "platform": "sensor",
+            "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
+            "device_class": SensorDeviceClass.TEMPERATURE,
+        }
+    ],
+    "40016": [
+        {
+            "id": "40016",
+            "name": "Outputs",
+            "platform": "sensor",
+        }
+    ],
+    "50001": [
+        {
+            "id": "50001",
+            "name": "Auger on",
+            "platform": "sensor",
+            "entity_category": EntityCategory.CONFIG,
+            "device_class": BinarySensorDeviceClass.RUNNING,
+            "extra_state_attributes": lambda device: {
+                "Device serial:": device.serial,
+                "Sensor type:": device.info("30001")["sensor_type"],
+                "Sensor ID:": "30001",
+                "Numerical value:": device.info("30001")["value"],
+            },
+        }
+    ],
 }

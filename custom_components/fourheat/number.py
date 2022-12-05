@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
 
 from .const import LOGGER
 from .coordinator import FourHeatCoordinator
@@ -21,7 +20,7 @@ from .fourheat import FourHeatDevice
 
 
 @dataclass
-class FourHeatSensorDescription(FourHeatEntityDescription, SensorEntityDescription):
+class FourHeatNumberDescription(FourHeatEntityDescription, NumberEntityDescription):
     """Class to describe a device sensor."""
 
 
@@ -36,24 +35,24 @@ async def async_setup_entry(
         config_entry,
         async_add_entities,
         _setup_descriptions(
-            FourHeatSensor,
-            FourHeatSensorDescription,
+            FourHeatNumber,
+            FourHeatNumberDescription,
         ),
-        FourHeatSensor,
+        FourHeatNumber,
     )
 
 
-class FourHeatSensor(FourHeatAttributeEntity, SensorEntity):
+class FourHeatNumber(FourHeatAttributeEntity, NumberEntity):
     """Representation of a 4Heat device sensor."""
 
-    entity_description: FourHeatSensorDescription
+    entity_description: FourHeatNumberDescription
 
     def __init__(
         self,
         coordinator: FourHeatCoordinator,
         device: FourHeatDevice,
         attribute: str,
-        description: FourHeatSensorDescription,
+        description: FourHeatNumberDescription,
     ) -> None:
         """Initialize sensor."""
 
@@ -61,9 +60,20 @@ class FourHeatSensor(FourHeatAttributeEntity, SensorEntity):
 
         self._attr_native_unit_of_measurement = description.native_unit_of_measurement
 
-        LOGGER.debug("Additing sensor: %s", attribute)
+        LOGGER.debug("Additing number: %s", attribute)
 
     @property
-    def native_value(self) -> StateType:
+    def native_value(self) -> float | None:
         """Return value of sensor."""
-        return self.attribute_value
+        if not self.attribute_value:
+            return None
+        return float(self.attribute_value)
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set value."""
+        if not self.unique_id:
+            raise RuntimeError(f"No unique ID set to {self.attribute}")
+        await self.coordinator.device.async_set_state(
+            self.unique_id.split("-")[-1], int(value)
+        )
+        self.async_write_ha_state()

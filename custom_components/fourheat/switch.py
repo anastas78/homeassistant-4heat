@@ -1,110 +1,95 @@
-"""The 4Heat integration."""
+"""The 4Heat integration switch."""
+from __future__ import annotations
 
-import logging
-from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+# from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
-from .const import (
-    MODE_NAMES, SENSOR_TYPES, DOMAIN, DATA_COORDINATOR, MODE_TYPE, ERROR_TYPE
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import SERVICE_TURN_OFF, SERVICE_TURN_ON, STATE_OFF, STATE_ON
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .const import LOGGER
+from .coordinator import FourHeatCoordinator
+from .entity import (
+    FourHeatAttributeEntity,
+    FourHeatEntityDescription,
+    _setup_descriptions,
+    async_setup_entry_attribute_entities,
 )
-from .coordinator import FourHeatDataUpdateCoordinator
-
-_LOGGER = logging.getLogger(__name__)
+from .fourheat import FourHeatDevice
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """Add an FourHeat entry."""
-    coordinator: FourHeatDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id][
-        DATA_COORDINATOR
-    ]
-    entities = []
+@dataclass
+class FourHeatSwitchDescription(FourHeatEntityDescription, SwitchEntityDescription):
+    """Class to describe a device switch."""
 
-    for sensorId in coordinator.swiches:
-        try:
-            entities.append(FourHeatSwitch(coordinator, sensorId, entry.title))
-        except:
-            _LOGGER.debug(f"Error adding {sensorId}")
-
-    async_add_entities(entities)
+    # description: Callable[[str, FourHeatEntityDescription]] | None = None
 
 
-class FourHeatSwitch(CoordinatorEntity, SwitchEntity):
-    """Representation of a 4Heat device."""
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up switch for the device."""
 
-    def __init__(self, coordinator, sensor_type, name):
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._sensor = SENSOR_TYPES[sensor_type][0]
-        self._name = name
-        self.type = sensor_type
-        self.coordinator = coordinator
-        self._last_value = None
-        self.serial_number = coordinator.serial_number
-        self.model = coordinator.model
-        _LOGGER.debug(self.coordinator)
+    return async_setup_entry_attribute_entities(
+        hass,
+        config_entry,
+        async_add_entities,
+        _setup_descriptions(
+            FourHeatSwitch,
+            FourHeatSwitchDescription,
+        ),
+        FourHeatSwitch,
+    )
+
+
+class FourHeatSwitch(FourHeatAttributeEntity, SwitchEntity):
+    """Representation of a 4Heat switch."""
+
+    entity_description: FourHeatSwitchDescription
+
+    def __init__(
+        self,
+        coordinator: FourHeatCoordinator,
+        device: FourHeatDevice,
+        attribute: str,
+        description: FourHeatSwitchDescription,
+    ) -> None:
+        """Initialize the switch."""
+
+        super().__init__(coordinator, device, attribute, description)
+        self.control_result: str | None = None
+        # self._attr_device_class = description.device_class
+        LOGGER.debug("Additing switch: %s", attribute)
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{self._name} {self._sensor}"
+    def is_on(self) -> bool:
+        """If switch is on."""
+        if self.control_result:
+            return self.control_result == STATE_ON
+        return self.device.status == "on"
 
-    @property
-    def is_on(self):
-        """Return true if switch is on."""
-        if self.type not in self.coordinator.data: 
-            return False
-        if self.type == MODE_TYPE:
-            return self.coordinator.data[self.type][0] not in [0,7,8,9]
-        elif self.type == ERROR_TYPE:
-            return self.coordinator.data[self.type][0] != 0
-
-    async def async_turn_on(self, **kwargs):
-        """Turn the switch on."""
-        if self.type == MODE_TYPE:
-            await self.coordinator.async_turn_on()
-        elif self.type == ERROR_TYPE:
-            None
-        await self.coordinator.async_request_refresh()
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on 4heat."""
+        # await self.set_state(command=SERVICE_TURN_ON)
+        await self.device.async_send_command(SERVICE_TURN_ON)
+        self.control_result = STATE_ON
         self.async_write_ha_state()
 
-    async def async_turn_off(self, **kwargs):
-        """Turn the switch off."""
-        if self.type == MODE_TYPE:
-            await self.coordinator.async_turn_off()
-        elif self.type == ERROR_TYPE:
-            await self.coordinator.async_unblock()
-        await self.coordinator.async_request_refresh()
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off 4heat."""
+        # self.control_result = await self.set_state(command=SERVICE_TURN_OFF)
+        await self.device.async_send_command(SERVICE_TURN_OFF)
+        self.control_result = STATE_OFF
         self.async_write_ha_state()
 
-
-    @property
-    def unique_id(self):
-        """Return unique id based on device serial and variable."""
-        return f"{self._name}_{self.type}"
-
-    @property
-    def device_info(self):
-        """Return information about the device."""
-        return {
-            "identifiers": {(DOMAIN, self.serial_number)},
-            "name": self._name,
-            "manufacturer": "4Heat",
-            "model": self.model,
-        }
-
-    @property
-    def state_attributes(self):
-        try:
-            if self.type == MODE_TYPE:
-                return {
-                    "Num Val": self.coordinator.data[self.type][0],
-                    "Val text": MODE_NAMES[self.coordinator.data[self.type][0]]
-                }
-            elif self.type == ERROR_TYPE:
-                return {"Num Val": self.coordinator.data[self.type][0]}
-            else:
-                return None
-
-        except Exception as ex:
-            _LOGGER.error(ex)
-            return None
+    @callback
+    def _update_callback(self) -> None:
+        """When device updates, clear control result that overrides state."""
+        self.control_result = None
+        super()._update_callback()
